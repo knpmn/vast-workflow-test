@@ -24,7 +24,7 @@ log_step()    { printf "\n${C_BOLD}${C_BLUE}─── [%s] %s ───${C_RESET
 
 START_TIME=$(date +%s)
 
-# --- Clean Process-Specific Signal Trap (Handles Ctrl+C) ---
+# --- Signal Trap ---
 cleanup() {
     printf "\n"
     log_warn "Caught interruption signal. Killing active child downloads..."
@@ -51,35 +51,25 @@ fi
 
 log_info "Active ComfyUI Directory: ${COMFY_DIR}"
 
-# --- 2. Verify HF Tooling & Transfer Engine ---
+# --- 2. Verify HF Tooling & Xet High Performance Engine ---
 log_step "Step 2: Checking Download Engine"
 
 if command -v hf &> /dev/null; then
     log_success "'hf' CLI is installed."
 else
-    log_info "Installing 'hf' CLI..."
-    pip install -q -U "hf"
+    log_info "Installing modern 'hf' CLI via huggingface_hub..."
+    pip install -q -U "huggingface_hub[cli]"
 fi
 
-if ! python3 -c "import hf_transfer" &> /dev/null; then
-    log_info "Installing hf_transfer for accelerated downloads..."
-    pip install -q hf_transfer
-fi
-
-export HF_HUB_ENABLE_HF_TRANSFER=1
-log_info "HF_HUB_ENABLE_HF_TRANSFER=1 enabled."
+# Modern high-performance transfers in Hugging Face use Xet
+export HF_XET_HIGH_PERFORMANCE=1
+log_success "HF_XET_HIGH_PERFORMANCE=1 enabled."
 
 # --- 3. Dynamic Asset Manifest ---
 # Format: "REPO_ID | FILENAME | RELATIVE_SUBFOLDER"
 DOWNLOAD_TARGETS=(
-    # Checkpoints
-    "Unzanezx/ananmatsu_v2 | amanatsuIllustrious_v11.safetensors | models/checkpoints",
+    "Unzanezx/ananmatsu_v2 | amanatsuIllustrious_v11.safetensors | models/checkpoints"
     "Unzanezx/ananmatsu_v2 | IFL_v1.0_IL.safetensors | models/loras"
-    # "https://huggingface.co/Unzanezx/ananmatsu_v2/blob/main/IFL_v1.0_IL.safetensors
-    # Examples for other folders (Uncomment or add your own):
-    # "stabilityai/sd-vae-ft-mse-original | vae-ft-mse-840000-ema-pruned.safetensors | models/vae"
-    # "comfyanonymous/flux_text_encoders | clip_l.safetensors | models/clip"
-    # "comfyanonymous/flux_text_encoders | t5xxl_fp8_e4m3fn.safetensors | models/clip"
 )
 
 AUTH_FLAG=()
@@ -92,7 +82,6 @@ fi
 log_step "Step 3: Processing Asset Downloads (${#DOWNLOAD_TARGETS[@]} items)"
 
 for entry in "${DOWNLOAD_TARGETS[@]}"; do
-    # Trim whitespace and parse delimited values
     IFS='|' read -r repo_raw file_raw folder_raw <<< "$entry"
     REPO=$(echo "$repo_raw" | xargs)
     FILENAME=$(echo "$file_raw" | xargs)
@@ -107,25 +96,26 @@ for entry in "${DOWNLOAD_TARGETS[@]}"; do
     log_info "Target File: ${FILENAME}"
     log_info "Destination: ${DEST_DIR}"
 
-    if [ -f "$TARGET_PATH" ]; then
+    # Existence check: Skip network call entirely if file is non-empty
+    if [ -s "$TARGET_PATH" ]; then
         FILE_SIZE=$(ls -lh "$TARGET_PATH" | awk '{print $5}')
-        log_warn "File already exists (${FILE_SIZE}). Skipping."
-    else
-        log_info "Fetching from '${REPO}'..."
-        
-        # Download using hf CLI with exact inclusion pattern
-        hf download "$REPO" \
-            --include "$FILENAME" \
-            --local-dir "$DEST_DIR" \
-            "${AUTH_FLAG[@]}"
+        log_warn "File already exists and is non-empty (${FILE_SIZE}). Skipping download."
+        continue
+    fi
 
-        if [ -f "$TARGET_PATH" ]; then
-            FILE_SIZE=$(ls -lh "$TARGET_PATH" | awk '{print $5}')
-            log_success "Downloaded successfully (${FILE_SIZE})."
-        else
-            log_error "Failed to verify '${FILENAME}' after download."
-            exit 1
-        fi
+    log_info "Fetching from '${REPO}'..."
+    
+    # Download single target file without recreating repo folder tree
+    hf download "$REPO" "$FILENAME" \
+        --local-dir "$DEST_DIR" \
+        "${AUTH_FLAG[@]}"
+
+    if [ -s "$TARGET_PATH" ]; then
+        FILE_SIZE=$(ls -lh "$TARGET_PATH" | awk '{print $5}')
+        log_success "Downloaded successfully (${FILE_SIZE})."
+    else
+        log_error "Failed to verify '${FILENAME}' after download (missing or 0-byte)."
+        exit 1
     fi
 done
 
