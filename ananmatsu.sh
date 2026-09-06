@@ -3,10 +3,12 @@
 set -eo pipefail
 
 # --- Setup Logging ---
-# Tee stdout and stderr so logs are visible both in Vast console and in /workspace/provisioning.log
 LOG_FILE="/workspace/provisioning.log"
 mkdir -p /workspace
-exec > >(tee -a "$LOG_FILE") 2>&1
+
+# Direct stdout and stderr to the log file without bash-specific syntax
+exec 1>>"$LOG_FILE"
+exec 2>&1
 
 echo "=================================================="
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Provisioning Setup"
