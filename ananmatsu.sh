@@ -1,21 +1,11 @@
-
 #!/usr/bin/env bash
 set -eo pipefail
-
-# --- Setup Logging ---
-LOG_FILE="/workspace/provisioning.log"
-mkdir -p /workspace
-
-# Direct stdout and stderr to the log file without bash-specific syntax
-exec 1>>"$LOG_FILE"
-exec 2>&1
 
 echo "=================================================="
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Provisioning Setup"
 echo "=================================================="
 
 # --- 1. Detect ComfyUI Directory & Set Paths ---
-# Standard paths across Vast.ai ComfyUI base images
 if [ -d "/workspace/ComfyUI" ]; then
     COMFY_DIR="/workspace/ComfyUI"
 elif [ -d "/opt/ComfyUI" ]; then
@@ -36,7 +26,6 @@ if ! command -v aria2c &> /dev/null; then
 fi
 
 # --- 3. Target File Details ---
-# Direct resolver URL (note /resolve/ instead of /blob/)
 MODEL_URL="https://huggingface.co/Unzanezx/ananmatsu_v2/resolve/main/amanatsuIllustrious_v11.safetensors"
 MODEL_FILENAME="amanatsuIllustrious_v11.safetensors"
 TARGET_FILE="$CKPT_DIR/$MODEL_FILENAME"
