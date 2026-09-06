@@ -73,8 +73,9 @@ log_info "HF_HUB_ENABLE_HF_TRANSFER=1 enabled."
 # Format: "REPO_ID | FILENAME | RELATIVE_SUBFOLDER"
 DOWNLOAD_TARGETS=(
     # Checkpoints
-    "Unzanezx/ananmatsu_v2 | amanatsuIllustrious_v11.safetensors | models/checkpoints"
-    
+    "Unzanezx/ananmatsu_v2 | amanatsuIllustrious_v11.safetensors | models/checkpoints",
+    "Unzanezx/ananmatsu_v2 | IFL_v1.0_IL.safetensors | models/loras"
+    # "https://huggingface.co/Unzanezx/ananmatsu_v2/blob/main/IFL_v1.0_IL.safetensors
     # Examples for other folders (Uncomment or add your own):
     # "stabilityai/sd-vae-ft-mse-original | vae-ft-mse-840000-ema-pruned.safetensors | models/vae"
     # "comfyanonymous/flux_text_encoders | clip_l.safetensors | models/clip"
