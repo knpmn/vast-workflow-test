@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+# --- Catch Ctrl+C (SIGINT) and Exit Cleanly ---
+trap 'echo -e "\n[ABORTED] Script interrupted by user."; kill 0; exit 130' INT TERM
+
+
 echo "=================================================="
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Provisioning Setup"
 echo "=================================================="
